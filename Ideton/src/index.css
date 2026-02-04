@@ -6,6 +6,11 @@
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
+  --onPrimary-color: #242424;
+  --primary-color: #e1ca96;
+  --secondary-color: #aca885;
+  --color3: #918b76;
+  --color4: #726e97;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -33,13 +38,13 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: var(--primary-color);
+  color: var(--onPrimary-color);
+  box-shadow: 0 2px 5px black;
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: all 0.3s;
 }
-button:hover {
-  border-color: #646cff;
-}
+
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
