@@ -38,11 +38,13 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: var(--primary-color);
-  color: var(--onPrimary-color);
-  box-shadow: 0 2px 5px black;
+  background-color: var(--onPrimary-color);
+  color: var(--primary-color);
+  border: var(--primary-color) solid 2px;
+  box-shadow: 0 2px 5px rgb(0, 0, 0);
   cursor: pointer;
   transition: all 0.3s;
+  user-select: none;
 }
 
 button:focus,
