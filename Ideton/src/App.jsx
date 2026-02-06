@@ -11,6 +11,8 @@ function App() {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedNoteId, setSelectedNoteId] = useState(null);
 
+  const [popoverNote, setPopoverNote] = useState(null);
+
   const [folderName, setFolderName] = useState("");
   const [folders, setFolders] = useState([
     {
@@ -36,6 +38,9 @@ function App() {
     { id: 8, color: "orange" },
   ]);
   const [selectedFolderIcon, setSelectedFolderIcon] = useState("currentColor");
+
+  const [noteToMoveAfterFolderCreate, setNoteToMoveAfterFolderCreate] =
+    useState(null);
 
   const deleteFolder = (folderId) => {
     if (folderId === 1) return;
@@ -82,10 +87,12 @@ function App() {
 
   const saveFolder = () => {
     if (!folderName.trim()) {
-      console.log(folderName.trim());
       setIsEditingFolder(false);
+      setNoteToMoveAfterFolderCreate(null);
       return;
     }
+
+    const newFolderId = Date.now();
 
     if (folderToEdit) {
       setFolders(
@@ -97,7 +104,7 @@ function App() {
       );
     } else {
       const newFolder = {
-        id: Date.now(),
+        id: newFolderId,
         folderName: folderName.trim(),
         folderColor: selectedFolderIcon,
       };
@@ -109,6 +116,7 @@ function App() {
     setFolderToEdit(null);
     setFolderName("");
     setSelectedFolderIcon("currentColor");
+    setNoteToMoveAfterFolderCreate(null);
   };
 
   const handleSave = () => {
@@ -148,17 +156,79 @@ function App() {
       ? notes
       : notes.filter((n) => n.folderId === selectedFolderId);
 
+  const moveNoteToFolder = (noteId, newFolderId) => {
+    setNotes(
+      notes.map((n) =>
+        n.id === noteId
+          ? { ...n, folderId: n.folderId === newFolderId ? 1 : newFolderId }
+          : n,
+      ),
+    );
+    setPopoverNote(null);
+  };
+
+  const moveNoteToFolderHandle = (noteId, newFolderId) => {
+    setNotes(
+      notes.map((n) =>
+        n.id === noteId ? { ...n, folderId: (n.folderId = newFolderId) } : n,
+      ),
+    );
+    setPopoverNote(null);
+  };
+
+  const createNewFolderAndMove = (noteId) => {
+    setNoteToMoveAfterFolderCreate(noteId);
+    setIsEditingFolder(true);
+    setFolderName("");
+    setFolderToEdit(null);
+  };
+
   return (
     <>
       <div className="main">
         <h1>IDETON</h1>
         <div className="field">
           <div className="menu-panel">
-            <button className="add-note-btn" onClick={createNewNote}>
-              <span>+</span>
+            <button
+              className="add-note-btn"
+              onClick={createNewNote}
+              aria-label="Create New Note"
+            >
+              <svg
+                width="35"
+                height="35"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="add-note-icon"
+              >
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+
+                <polyline points="14 2 14 8 20 8"></polyline>
+
+                <line x1="12" y1="18" x2="12" y2="12"></line>
+                <line x1="9" y1="15" x2="15" y2="15"></line>
+              </svg>
             </button>
             <button className="create-folder-btn" onClick={createNewFolder}>
-              <span>New folder</span>
+              <svg
+                width="35"
+                height="35"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="add-folder-icon"
+              >
+                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                <line x1="12" y1="11" x2="12" y2="17"></line>
+                <line x1="9" y1="14" x2="15" y2="14"></line>
+              </svg>
             </button>
             <div className="folders-list">
               {folders.map((folder) => (
@@ -181,6 +251,29 @@ function App() {
                   }}
                   onMouseLeave={() => {
                     clearTimeout(longPressTimeout);
+                  }}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDragEnter={(e) =>
+                    e.currentTarget.classList.add("drag-over")
+                  }
+                  onDragLeave={(e) =>
+                    e.currentTarget.classList.remove("drag-over")
+                  }
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove("drag-over");
+
+                    const noteId = Number(e.dataTransfer.getData("noteId"));
+
+                    moveNoteToFolderHandle(noteId, folder.id);
+                  }}
+                  onMouseEnter={(e) => {
+                    const p = e.currentTarget.querySelector("p");
+                    if (p && p.scrollWidth > p.clientWidth) {
+                      p.setAttribute("title", folder.folderName);
+                    } else if (p) {
+                      p.removeAttribute("title");
+                    }
                   }}
                 >
                   <svg
@@ -235,8 +328,38 @@ function App() {
                 {filtredNotes.map((note) => (
                   <div
                     key={note.id}
-                    className="note"
+                    className={`note ${popoverNote?.note.id === note.id ? "active-popover" : ""}`}
                     onClick={() => selectNote(note)}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData("noteId", note.id);
+
+                      const dragIcon = document.createElement("div");
+                      dragIcon.innerText =
+                        note.title.substring(0, 10) +
+                        `${note.title.length > 10 ? "..." : ""}`;
+                      dragIcon.style.width = "100px";
+                      dragIcon.style.height = "150px";
+                      dragIcon.style.background = "var(--primary-color)";
+                      dragIcon.style.color = "var(--onPrimary-color)";
+                      dragIcon.style.borderRadius = "8px";
+                      dragIcon.style.display = "flex";
+                      dragIcon.style.alignItems = "center";
+                      dragIcon.style.justifyContent = "center";
+                      dragIcon.style.position = "absolute";
+                      dragIcon.style.top = "-1000px";
+                      dragIcon.style.textOverflow = "ellipsis";
+                      dragIcon.style.fontSize = "0.8rem";
+                      dragIcon.style.whiteSpace = "nowrap";
+
+                      document.body.appendChild(dragIcon);
+
+                      e.dataTransfer.setDragImage(dragIcon, 60, 20);
+                      setTimeout(() => document.body.removeChild(dragIcon), 0);
+                    }}
+                    onDragEnd={(e) => {
+                      e.currentTarget.classList.remove("dragging");
+                    }}
                   >
                     <button
                       className="delete-btn on-note-btn"
@@ -251,7 +374,12 @@ function App() {
                       className="folder-btn on-note-btn"
                       onClick={(e) => {
                         e.stopPropagation();
-                        console.log("clicked");
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setPopoverNote({
+                          note: note,
+                          x: rect.left,
+                          y: rect.bottom + window.scrollY,
+                        });
                       }}
                     >
                       <svg
@@ -287,7 +415,7 @@ function App() {
       {isEditingFolder && (
         <div className="modal-overlay">
           <div className="modal-content">
-            <h3>New Folder</h3>
+            <h3>{folderToEdit ? "Edit Folder" : "New Folder"}</h3>
             <input
               type="text"
               name="folder-name-input"
@@ -335,7 +463,10 @@ function App() {
             ) : (
               <div className="modal-buttons">
                 <button
-                  onClick={() => setIsEditingFolder(false)}
+                  onClick={() => {
+                    setNoteToMoveAfterFolderCreate(null);
+                    setIsEditingFolder(false);
+                  }}
                   className="cancel-btn"
                 >
                   Cancel
@@ -345,6 +476,67 @@ function App() {
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {popoverNote && (
+        <div className="popover-overlay" onClick={() => setPopoverNote(null)}>
+          <div
+            className="popover-menu"
+            onClick={(e) => e.stopPropagation()}
+            style={{ top: `${popoverNote.y}px`, left: `${popoverNote.x}px` }}
+          >
+            <h4>Move to...</h4>
+            <div className="popover-list">
+              <button
+                className="popover-item-btn"
+                onClick={() => createNewFolderAndMove(popoverNote.note.id)}
+              >
+                <svg
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="plus-square-icon"
+                >
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="12" y1="8" x2="12" y2="16"></line>
+                  <line x1="8" y1="12" x2="16" y2="12"></line>
+                </svg>
+                Create Folder
+              </button>
+              {folders
+                .filter((f) => f.id != 1)
+                .map((folder) => (
+                  <button
+                    key={folder.id}
+                    className={`popover-item-btn ${popoverNote.note.folderId === folder.id ? "popover-item-selected" : ""}`}
+                    onClick={() =>
+                      moveNoteToFolder(popoverNote.note.id, folder.id)
+                    }
+                  >
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke={folder.folderColor || "currentColor"}
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="folder-icon"
+                    >
+                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <p>{folder.folderName}</p>
+                  </button>
+                ))}
+            </div>
           </div>
         </div>
       )}

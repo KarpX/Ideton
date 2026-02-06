@@ -27,8 +27,8 @@ div {
 
 .field {
   width: 100%;
-  display: flex;
-  flex-direction: row;
+  display: grid;
+  grid-template-columns: 130px auto 30px;
   height: 100%;
   overflow: hidden;
 }
@@ -37,17 +37,24 @@ div {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 9%;
+  width: 130px;
 }
 
 .menu-panel button {
+  display: flex;
   margin: 15px;
   text-align: center;
-  width: fit-content;
+  width: 65px;
+  height: 62px;
+  justify-content: center;
+}
+
+button svg {
+  flex-shrink: 0;
 }
 
 button:hover {
-  font-size: 16px;
+  scale: 1.05;
   background-color: var(--primary-color);
   color: var(--onPrimary-color);
 }
@@ -88,7 +95,10 @@ button:hover {
 }
 
 .note:hover {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+  z-index: 10;
   background-color: rgb(86, 86, 86);
+  scale: 1.02;
 }
 
 .note:hover .on-note-btn {
@@ -108,7 +118,6 @@ button:hover {
 
 .delete-btn:hover {
   background-color: rgb(185, 24, 24);
-  font-size: 18px;
   color: rgb(219, 219, 219);
 }
 
@@ -116,6 +125,77 @@ button:hover {
   top: 70px;
   right: 10px;
   padding: 10px;
+}
+
+.popover-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: transparent;
+  z-index: 200;
+}
+
+.popover-menu {
+  position: absolute;
+  z-index: 100;
+  transform: translateX(+30%) translateY(-44%);
+  min-width: 150px;
+  width: 185px;
+  background: var(--onPrimary-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.9);
+  padding: 8px;
+  border: 2px solid var(--primary-color);
+}
+
+.popover-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  flex-shrink: 0;
+}
+
+.popover-item-btn {
+  display: flex;
+  width: 100%;
+  text-align: center;
+  justify-content: flex-start;
+  margin: 2px;
+  padding-left: 5px;
+  padding-right: 6px;
+  gap: 10px;
+}
+
+.popover-item-btn p {
+  height: fit-content;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.popover-item-btn .folder-icon {
+  flex-shrink: 0;
+}
+
+.popover-item-selected {
+  background-color: var(--primary-color);
+  color: var(--onPrimary-color);
+}
+
+.note.active-popover {
+  background-color: rgb(86, 86, 86);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+  z-index: 10;
+}
+
+.note.active-popover .folder-btn {
+  opacity: 1;
+  background-color: var(--primary-color);
+  color: var(--onPrimary-color);
 }
 
 .note h3 {
@@ -138,6 +218,20 @@ button:hover {
 
 .note-time {
   font-size: 16px;
+}
+
+.note.dragging {
+  opacity: 0.5;
+  border: 2px;
+}
+
+.folder.drag-over {
+  background-color: var(--color4);
+  transform: scale(1.05);
+}
+
+.folder.drag-over * {
+  pointer-events: none;
 }
 
 .editor-area {
@@ -226,10 +320,13 @@ button:hover {
 }
 
 .folders-list {
+  border-top: 2px solid var(--primary-color);
+  padding-top: 15px;
   overflow-y: auto;
   height: 66vh;
   direction: rtl;
   width: 100%;
+  overflow-x: hidden;
 }
 
 .folder {
@@ -241,6 +338,8 @@ button:hover {
   border-radius: 6px;
   transition: background 0.2s;
   color: var(--primary-color);
+  width: 100%;
+  direction: ltr;
 }
 
 .folder:hover {
@@ -250,8 +349,14 @@ button:hover {
 
 .folder p {
   margin-top: auto;
+  display: block;
+  width: 100%;
   margin-bottom: 0;
+  white-space: nowrap;
   user-select: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
 }
 
 .folder.selected {

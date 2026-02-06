@@ -43,7 +43,7 @@ button {
   border: var(--primary-color) solid 2px;
   box-shadow: 0 2px 5px rgb(0, 0, 0);
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.25s;
   user-select: none;
 }
 
