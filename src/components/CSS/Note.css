@@ -1,0 +1,103 @@
+.note-field {
+  display: block;
+  flex-wrap: wrap;
+  flex-direction: row;
+  justify-content: center;
+  align-content: flex-start;
+  border: 4px solid var(--primary-color);
+  border-radius: 15px;
+  height: 75vh;
+  width: 100%;
+  padding-top: 2vh;
+  padding-bottom: 2vh;
+  padding-left: 2vw;
+  padding-right: 2vw;
+  overflow-y: auto;
+}
+
+.note-list {
+  width: 100%;
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.note {
+  border: 3px solid black;
+  border-radius: 15px;
+  position: relative;
+  /* width: 228px; */
+  width: 19.2%;
+  height: 275px;
+  margin: 0.4%;
+  background-color: gray;
+}
+
+.note:hover {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45);
+  z-index: 10;
+  background-color: rgb(86, 86, 86);
+  scale: 1.02;
+}
+
+.note:hover .on-note-btn {
+  opacity: 1;
+}
+
+.on-note-btn {
+  opacity: 0;
+  position: absolute;
+  cursor: pointer;
+}
+
+.note h3 {
+  margin-inline: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.note p {
+  margin-inline: 15px;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  white-space: normal;
+  word-wrap: break-word;
+  overflow: hidden;
+  text-overflow: clip;
+  height: 150px;
+}
+
+.note-time {
+  font-size: 16px;
+}
+
+.note.dragging {
+  opacity: 0.5;
+  border: 2px;
+}
+
+.editor-area {
+  flex-grow: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  background-color: white;
+}
+
+.title-input {
+  font-size: 24px;
+  font-weight: bold;
+  border: none;
+  outline: none;
+  margin-bottom: 20px;
+}
+
+.note-text {
+  flex-grow: 1;
+  border: none;
+  outline: none;
+  font-size: 18px;
+  resize: none;
+}
