@@ -1,7 +1,12 @@
 import { useState } from "react";
-import { formatDistanceToNow } from "date-fns";
-import { ru } from "date-fns/locale";
+import FolderList from "./components/FoldersList.jsx";
+import NotesList from "./components/NotesList.jsx";
+import EditorArea from "./components/EditorArea.jsx";
+import EditingFolderModal from "./components/EditingFolderModal.jsx";
 import "./App.css";
+import "./components/CSS/Popover.css";
+import "./components/CSS/Folder.css";
+import "./components/CSS/Note.css";
 
 function App() {
   const [title, setTitle] = useState("");
@@ -230,254 +235,56 @@ function App() {
                 <line x1="9" y1="14" x2="15" y2="14"></line>
               </svg>
             </button>
-            <div className="folders-list">
-              {folders.map((folder) => (
-                <div
-                  key={folder.id}
-                  className={`folder ${selectedFolderId === folder.id ? "selected" : ""}`}
-                  onClick={() => setSelectedFolderId(folder.id)}
-                  onMouseDown={() => {
-                    const timeout = setTimeout(() => {
-                      if (folder.id !== 1) {
-                        setFolderToEdit(folder);
-                        setFolderName(folder.folderName);
-                        setIsEditingFolder(true);
-                      }
-                    }, 600);
-                    setLongPressTimeout(timeout);
-                  }}
-                  onMouseUp={() => {
-                    clearTimeout(longPressTimeout);
-                  }}
-                  onMouseLeave={() => {
-                    clearTimeout(longPressTimeout);
-                  }}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDragEnter={(e) =>
-                    e.currentTarget.classList.add("drag-over")
-                  }
-                  onDragLeave={(e) =>
-                    e.currentTarget.classList.remove("drag-over")
-                  }
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    e.currentTarget.classList.remove("drag-over");
-
-                    const noteId = Number(e.dataTransfer.getData("noteId"));
-
-                    moveNoteToFolderHandle(noteId, folder.id);
-                  }}
-                  onMouseEnter={(e) => {
-                    const p = e.currentTarget.querySelector("p");
-                    if (p && p.scrollWidth > p.clientWidth) {
-                      p.setAttribute("title", folder.folderName);
-                    } else if (p) {
-                      p.removeAttribute("title");
-                    }
-                  }}
-                >
-                  <svg
-                    width="35"
-                    height="35"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke={folder.folderColor || "currentColor"}
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="folder-icon"
-                  >
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                  </svg>
-                  <p>{folder.folderName}</p>
-                </div>
-              ))}
-            </div>
+            <FolderList
+              folders={folders}
+              selectedFolderId={selectedFolderId}
+              setSelectedFolderId={setSelectedFolderId}
+              longPressTimeout={longPressTimeout}
+              setLongPressTimeout={setLongPressTimeout}
+              onDropNote={moveNoteToFolderHandle}
+              onEditFolder={(folder) => {
+                setFolderToEdit(folder);
+                setFolderName(folder.folderName);
+                setIsEditingFolder(true);
+              }}
+            />
           </div>
           <div className="note-field">
             {isEditing ? (
-              <div className="editor-area">
-                <input
-                  className="title-input"
-                  placeholder="Title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                ></input>
-                <textarea
-                  className="note-text"
-                  placeholder="Type here..."
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                ></textarea>
-                <div className="button-container">
-                  <button
-                    className="cancel-button"
-                    onClick={() => {
-                      setIsEditing(false);
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button className="save-button" onClick={handleSave}>
-                    Save
-                  </button>
-                </div>
-              </div>
+              <EditorArea
+                setTitle={setTitle}
+                setContent={setContent}
+                setIsEditing={setIsEditing}
+                handleSave={handleSave}
+                content={content}
+                title={title}
+              />
             ) : (
-              <div className="note-list">
-                {filtredNotes.map((note) => (
-                  <div
-                    key={note.id}
-                    className={`note ${popoverNote?.note.id === note.id ? "active-popover" : ""}`}
-                    onClick={() => selectNote(note)}
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData("noteId", note.id);
-
-                      const dragIcon = document.createElement("div");
-                      dragIcon.innerText =
-                        note.title.substring(0, 10) +
-                        `${note.title.length > 10 ? "..." : ""}`;
-                      dragIcon.style.width = "100px";
-                      dragIcon.style.height = "150px";
-                      dragIcon.style.background = "var(--primary-color)";
-                      dragIcon.style.color = "var(--onPrimary-color)";
-                      dragIcon.style.borderRadius = "8px";
-                      dragIcon.style.display = "flex";
-                      dragIcon.style.alignItems = "center";
-                      dragIcon.style.justifyContent = "center";
-                      dragIcon.style.position = "absolute";
-                      dragIcon.style.top = "-1000px";
-                      dragIcon.style.textOverflow = "ellipsis";
-                      dragIcon.style.fontSize = "0.8rem";
-                      dragIcon.style.whiteSpace = "nowrap";
-
-                      document.body.appendChild(dragIcon);
-
-                      e.dataTransfer.setDragImage(dragIcon, 60, 20);
-                      setTimeout(() => document.body.removeChild(dragIcon), 0);
-                    }}
-                    onDragEnd={(e) => {
-                      e.currentTarget.classList.remove("dragging");
-                    }}
-                  >
-                    <button
-                      className="delete-btn on-note-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (window.confirm("Delete note?")) deleteNote(note.id);
-                      }}
-                    >
-                      🗑
-                    </button>
-                    <button
-                      className="folder-btn on-note-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        setPopoverNote({
-                          note: note,
-                          x: rect.left,
-                          y: rect.bottom + window.scrollY,
-                        });
-                      }}
-                    >
-                      <svg
-                        width="30"
-                        height="30"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="folder-icon"
-                      >
-                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                      </svg>
-                    </button>
-                    <h3>{note.title}</h3>
-                    <p>{note.content}</p>
-                    <footer className="note-time">
-                      {formatDistanceToNow(new Date(note.id), {
-                        addSuffix: true,
-                        locale: ru,
-                      })}
-                    </footer>
-                  </div>
-                ))}
-              </div>
+              <NotesList
+                filtredNotes={filtredNotes}
+                popoverNote={popoverNote}
+                selectNote={selectNote}
+                deleteNote={deleteNote}
+                setPopoverNote={setPopoverNote}
+              />
             )}
           </div>
         </div>
       </div>
 
       {isEditingFolder && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <h3>{folderToEdit ? "Edit Folder" : "New Folder"}</h3>
-            <input
-              type="text"
-              name="folder-name-input"
-              placeholder="Enter a folder's name..."
-              value={folderName}
-              onChange={(e) => setFolderName(e.target.value)}
-              autoFocus
-              aria-label="Enter folder's name"
-            ></input>
-            <div className="folder-icons">
-              {folderIcons.map((color) => (
-                <div
-                  key={color.id}
-                  className={`icon-circle ${selectedFolderIcon === color.color ? "selected" : ""}`}
-                  onClick={() => setSelectedFolderIcon(color.color)}
-                >
-                  <svg
-                    width="50"
-                    height="50"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke={color.color}
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="folder-icon"
-                  >
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                  </svg>
-                </div>
-              ))}
-            </div>
-            {folderToEdit ? (
-              <div className="modal-buttons">
-                <button
-                  onClick={() => deleteFolder(folderToEdit.id)}
-                  className="cancel-btn"
-                >
-                  Delete
-                </button>
-                <button onClick={saveFolder} className="save-btn">
-                  Rename
-                </button>
-              </div>
-            ) : (
-              <div className="modal-buttons">
-                <button
-                  onClick={() => {
-                    setNoteToMoveAfterFolderCreate(null);
-                    setIsEditingFolder(false);
-                  }}
-                  className="cancel-btn"
-                >
-                  Cancel
-                </button>
-                <button onClick={saveFolder} className="save-btn">
-                  Create
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+        <EditingFolderModal
+          setFolderName={setFolderName}
+          folderName={folderName}
+          folderToEdit={folderToEdit}
+          folderIcons={folderIcons}
+          selectedFolderIcon={selectedFolderIcon}
+          setSelectedFolderIcon={setSelectedFolderIcon}
+          deleteFolder={deleteFolder}
+          setNoteToMoveAfterFolderCreate={setNoteToMoveAfterFolderCreate}
+          setIsEditingFolder={setIsEditingFolder}
+          saveFolder={saveFolder}
+        />
       )}
 
       {popoverNote && (
