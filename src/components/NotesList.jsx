@@ -1,6 +1,18 @@
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
 
+const parseDate = (createdAt) => {
+  if (!createdAt) return new Date();
+
+  if (createdAt.seconds) {
+    return new Date(createdAt.seconds * 1000);
+  }
+
+  const date = new Date(createdAt);
+
+  return isNaN(date.getTime()) ? new Date() : date;
+};
+
 const NotesList = ({
   filtredNotes,
   popoverNote,
@@ -84,9 +96,8 @@ const NotesList = ({
           <h3>{note.title}</h3>
           <p>{note.content}</p>
           <footer className="note-time">
-            {formatDistanceToNow(new Date(note.id), {
+            {formatDistanceToNow(parseDate(note.updatedAt), {
               addSuffix: true,
-              locale: ru,
             })}
           </footer>
         </div>

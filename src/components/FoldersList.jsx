@@ -35,7 +35,7 @@ const FolderList = ({
             e.preventDefault();
             e.currentTarget.classList.remove("drag-over");
 
-            const noteId = Number(e.dataTransfer.getData("noteId"));
+            const noteId = e.dataTransfer.getData("noteId");
 
             onDropNote(noteId, folder.id);
           }}

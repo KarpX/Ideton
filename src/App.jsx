@@ -1,4 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { db } from "./firebase";
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  doc,
+  setDoc,
+  deleteDoc,
+  serverTimestamp,
+} from "firebase/firestore";
+import { onSnapshot, query, orderBy } from "firebase/firestore";
 import FolderList from "./components/FoldersList.jsx";
 import NotesList from "./components/NotesList.jsx";
 import EditorArea from "./components/EditorArea.jsx";
@@ -47,16 +58,57 @@ function App() {
   const [noteToMoveAfterFolderCreate, setNoteToMoveAfterFolderCreate] =
     useState(null);
 
-  const deleteFolder = (folderId) => {
+  useEffect(() => {
+    const q = query(collection(db, "notes"), orderBy("updatedAt", "desc"));
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const notesData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      setNotes(notesData);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    const q = query(collection(db, "folders"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const foldersData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      const defaultFolder = {
+        id: 1,
+        folderName: "All",
+        folderColor: "currentColor",
+      };
+      setFolders([defaultFolder, ...foldersData]);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const deleteFolder = async (folderId) => {
     if (folderId === 1) return;
 
     if (window.confirm("Delete folder and all it's notes?")) {
-      setFolders(folders.filter((f) => f.id !== folderId));
-      setNotes(notes.filter((n) => n.folderId !== folderId));
+      try {
+        await deleteDoc(doc(db, "folders", folderId));
+
+        const notesToDelete = notes.filter((n) => n.folderId === folderId);
+        const deletePromises = notesToDelete.map((n) =>
+          deleteDoc(doc(db, "notes", n.id)),
+        );
+
+        await Promise.all(deletePromises);
+      } catch (error) {
+        console.error("Delete folder error: ", error);
+      }
       setSelectedFolderId(1);
       setIsEditingFolder(false);
       setFolderToEdit(null);
-      setSelectedFolderIcon("currentColor");
     }
   };
 
@@ -79,42 +131,44 @@ function App() {
     setContent(note.content);
   };
 
-  const deleteNote = (noteId) => {
-    setNotes(notes.filter((n) => n.id !== noteId));
+  const deleteNote = async (noteId) => {
+    try {
+      await deleteDoc(doc(db, "notes", noteId));
 
-    if (selectedNoteId === noteId) {
-      setIsEditing(false);
-      setSelectedNoteId(null);
-      setTitle("");
-      setContent("");
+      if (selectedNoteId === noteId) {
+        setIsEditing(false);
+        setSelectedNoteId(null);
+        setTitle("");
+        setContent("");
+      }
+    } catch (error) {
+      console.error("Delete Error: ", error);
     }
   };
 
-  const saveFolder = () => {
+  const saveFolder = async () => {
     if (!folderName.trim()) {
       setIsEditingFolder(false);
       setNoteToMoveAfterFolderCreate(null);
       return;
     }
 
-    const newFolderId = Date.now();
-
-    if (folderToEdit) {
-      setFolders(
-        folders.map((f) =>
-          f.id === folderToEdit.id
-            ? { ...f, folderName: folderName.trim() }
-            : f,
-        ),
-      );
-    } else {
-      const newFolder = {
-        id: newFolderId,
-        folderName: folderName.trim(),
-        folderColor: selectedFolderIcon,
-      };
-
-      setFolders([...folders, newFolder]);
+    try {
+      if (folderToEdit) {
+        const folderRef = doc(db, "folders", folderToEdit.id);
+        await updateDoc(folderRef, {
+          folderName: folderName.trim(),
+          folderColor: selectedFolderIcon,
+        });
+      } else {
+        const newFolderRef = await addDoc(collection(db, "folders"), {
+          folderName: folderName.trim(),
+          folderColor: selectedFolderIcon,
+          createdAt: serverTimestamp(),
+        });
+      }
+    } catch (error) {
+      console.error("Folder save error: ", error);
     }
 
     setIsEditingFolder(false);
@@ -124,35 +178,32 @@ function App() {
     setNoteToMoveAfterFolderCreate(null);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!content.trim()) {
       setIsEditing(false);
       return;
     }
-
-    if (selectedNoteId) {
-      setNotes(
-        notes.map((n) =>
-          n.id === selectedNoteId
-            ? {
-                ...n,
-                title: title.trim() === "" ? n.title : title,
-                content: content.trim(),
-              }
-            : n,
-        ),
-      );
+    try {
+      if (selectedNoteId) {
+        const noteRef = doc(db, "notes", selectedNoteId);
+        await updateDoc(noteRef, {
+          title: title.trim() || "New note",
+          content: content.trim(),
+          updatedAt: serverTimestamp(),
+        });
+      } else {
+        await addDoc(collection(db, "notes"), {
+          title: title.trim() === "" ? "New note" : title,
+          content: content.trim(),
+          folderId: selectedFolderId,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      }
       setIsEditing(false);
-    } else {
-      const newNote = {
-        id: Date.now(),
-        title: title.trim() === "" ? "New note" : title,
-        content: content.trim(),
-        folderId: selectedFolderId,
-      };
-      setNotes([newNote, ...notes]);
-
-      setIsEditing(false);
+    } catch (error) {
+      console.error("Saving Error: ", error);
+      alert("Cloud saving error");
     }
   };
 
@@ -161,23 +212,29 @@ function App() {
       ? notes
       : notes.filter((n) => n.folderId === selectedFolderId);
 
-  const moveNoteToFolder = (noteId, newFolderId) => {
-    setNotes(
-      notes.map((n) =>
-        n.id === noteId
-          ? { ...n, folderId: n.folderId === newFolderId ? 1 : newFolderId }
-          : n,
-      ),
-    );
+  const moveNoteToFolder = async (noteId, newFolderId) => {
+    try {
+      const noteRef = doc(db, "notes", noteId);
+      await updateDoc(noteRef, {
+        folderId: newFolderId,
+      });
+    } catch (error) {
+      console.error("Moving Error: ", error);
+      alert("Moving Error");
+    }
     setPopoverNote(null);
   };
 
-  const moveNoteToFolderHandle = (noteId, newFolderId) => {
-    setNotes(
-      notes.map((n) =>
-        n.id === noteId ? { ...n, folderId: (n.folderId = newFolderId) } : n,
-      ),
-    );
+  const moveNoteToFolderHandle = async (noteId, newFolderId) => {
+    try {
+      const noteRef = doc(db, "notes", noteId);
+      await updateDoc(noteRef, {
+        folderId: newFolderId,
+      });
+    } catch (error) {
+      console.error("Moving Error: ", error);
+      alert("Moving Error");
+    }
     setPopoverNote(null);
   };
 
